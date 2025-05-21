@@ -10,13 +10,18 @@ import {
   TableBody,
   TableHead,
 } from "./table"; // ShadCN Table components
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
+import { faFilePdf, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 
 const OrdersTable = ({
   orders = [],
   customers,
   handleCopyUrl,
   handleRemove,
+  handleDownloadPdf,
+  handleDownloadExcel,
+  selectedOrderIds,
+  handleToggleOrderSelection,
 }) => {
   const navigate = useNavigate();
 
@@ -33,14 +38,32 @@ const OrdersTable = ({
               <Table className="min-w-full sm:min-w-[1000px]">
                 <TableHeader className={headerClasses}>
                   <TableRow className="">
-                    <TableHead  className={`${headerClasses} text-center`}>Order ID</TableHead>
-                    <TableHead className={`${headerClasses} text-center`}>Customer ID</TableHead>
-                    <TableHead className={`${headerClasses} text-left`}>Customer Name</TableHead>
-                    <TableHead className={`${headerClasses} text-left`}>Status</TableHead>
-                    <TableHead className={`${headerClasses} text-left`}>Total Amount</TableHead>
+                    <TableHead className={`${headerClasses} text-center`}>
+                      Select
+                    </TableHead>
+
+                    <TableHead className={`${headerClasses} text-center`}>
+                      Order ID
+                    </TableHead>
+                    <TableHead className={`${headerClasses} text-center`}>
+                      Customer ID
+                    </TableHead>
+                    <TableHead className={`${headerClasses} text-left`}>
+                      Customer Name
+                    </TableHead>
+                    <TableHead className={`${headerClasses} text-left`}>
+                      Status
+                    </TableHead>
+                    <TableHead className={`${headerClasses} text-left`}>
+                      Total Amount
+                    </TableHead>
                     {/*                     <TableHead className="text-left">Description</TableHead> */}
-                    <TableHead className={`${headerClasses} text-left`}>Created At</TableHead>
-                    <TableHead className={`${headerClasses} text-center`}>Actions</TableHead>
+                    <TableHead className={`${headerClasses} text-left`}>
+                      Created At
+                    </TableHead>
+                    <TableHead className={`${headerClasses} text-center`}>
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -52,6 +75,17 @@ const OrdersTable = ({
                         className={`${rowClasses} hover:bg-white`}
                         onClick={() => handleRowClick(order.id)} // Navigate on row click
                       >
+                        <TableCell className={`${cellClasses} text-center`}>
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() =>
+                              handleToggleOrderSelection(order.id)
+                            }
+                          />
+                        </TableCell>
+
                         <TableCell className={`${cellClasses} text-center`}>
                           {order.id}
                         </TableCell>
@@ -75,6 +109,27 @@ const OrdersTable = ({
                         </TableCell>
                         <TableCell className={`${cellClasses} text-left`}>
                           <div className="flex flex-row items-center justify-center gap-5">
+                            {/* Download PDF */}
+                            <FontAwesomeIcon
+                              icon={faFilePdf}
+                              className={`${fontbtnclass} text-blue-600 hover:text-blue-800 cursor-pointer`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadPdf(order);
+                              }}
+                              title="Download PDF"
+                            />
+
+                            {/* Download Excel */}
+                            <FontAwesomeIcon
+                              icon={faFileExcel}
+                              className={`${fontbtnclass} text-green-600 hover:text-green-800 cursor-pointer`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadExcel(order);
+                              }}
+                              title="Download Excel"
+                            />
                             <FontAwesomeIcon
                               icon={faClipboard}
                               className={`${fontbtnclass} text-gray-600 hover:text-black cursor-pointer`}
@@ -129,6 +184,10 @@ OrdersTable.propTypes = {
   customers: PropTypes.objectOf(PropTypes.string).isRequired,
   handleCopyUrl: PropTypes.func.isRequired,
   handleRemove: PropTypes.func.isRequired,
+  handleDownloadPdf: PropTypes.func.isRequired,
+  handleDownloadExcel: PropTypes.func.isRequired,
+  selectedOrderIds: PropTypes.array.isRequired,
+  handleToggleOrderSelection: PropTypes.func.isRequired,
 };
 
 export default OrdersTable;

@@ -26,6 +26,7 @@ const OrdersContent = () => {
   const [showForm, setShowForm] = useState(false);
   const [showInventory, setShowInventory] = useState(false); // To toggle inventory selection modal
   const [searchQuery, setSearchQuery] = useState(""); // For the search input
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
 
   // Fetch all orders, customers, and inventory
   useEffect(() => {
@@ -83,6 +84,17 @@ const OrdersContent = () => {
         ? prevSelected.filter((i) => i !== item) // Deselect if already selected
         : [...prevSelected, item]
     );
+  };
+  const handleToggleOrderSelection = (orderId) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
+  const getSelectedOrders = () => {
+    return orders.filter((order) => selectedOrderIds.includes(order.id));
   };
 
   // Generate order description based on selected items
@@ -160,7 +172,7 @@ const OrdersContent = () => {
   };
 
   const handleCopyUrl = (orderId) => {
-    const clientUrl = `${window.location.origin}/order/v1/${orderId}`;
+    const clientUrl = `${window.location.origin}/order/v4/${orderId}`;
     navigator.clipboard
       .writeText(clientUrl)
       .then(() => alert(`URL copied: ${clientUrl}`))
@@ -170,128 +182,127 @@ const OrdersContent = () => {
   // Function to generate and download a PDF of all approved orders
   const generatePdf = () => {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("Approved Orders Report", 10, 10); // Title
+    const selected = getSelectedOrders();
 
-    let y = 20;
-    const approvedOrders = orders.filter(
-      (order) => order.status.toLowerCase() === "approved by customer"
-    );
-
-    // Check if there are any approved orders
-    if (approvedOrders.length === 0) {
-      doc.text("No approved orders to display.", 10, y);
-      doc.save("approved_orders_report.pdf");
+    if (selected.length === 0) {
+      alert("No orders selected.");
       return;
     }
 
-    approvedOrders.forEach((order, index) => {
+    let y = 10;
+    doc.setFontSize(18);
+    doc.text("Selected Orders Report", 10, y);
+    y += 10;
+
+    selected.forEach((order, index) => {
       const customerName = customers[order.customer_id] || "Unknown Customer";
-      const createdAt = order.createdAt ? new Date(order.createdAt) : null;
-      const formattedDate =
-        createdAt && !isNaN(createdAt) ? createdAt.toLocaleString() : "N/A"; // Handle invalid dates
+      const createdAt = new Date(order.created_at).toLocaleString();
 
       doc.setFontSize(12);
-
-      // Add order details to PDF
       doc.text(`Order ${index + 1}:`, 10, y);
-      y += 6; // Move down for each detail
-      doc.text(`Order ID: ${order.id}`, 10, y);
       y += 6;
-      doc.text(`Customer ID: ${order.customer_id}`, 10, y);
+      doc.text(`ID: ${order.id}`, 10, y);
       y += 6;
-      doc.text(`Customer Name: ${customerName}`, 10, y);
+      doc.text(`Customer: ${customerName}`, 10, y);
       y += 6;
       doc.text(`Status: ${order.status}`, 10, y);
       y += 6;
-      doc.text(`Total Amount: $${order.total_amount}`, 10, y);
+      doc.text(`Amount: $${order.total_amount}`, 10, y);
       y += 6;
-      doc.text(`Description: ${order.order_description || "N/A"}`, 10, y);
+      doc.text(`Desc: ${order.order_description}`, 10, y);
       y += 6;
-      doc.text(`Created At: ${formattedDate}`, 10, y); // Use formatted date
-      y += 10; // Add extra space between orders
+      doc.text(`Created At: ${createdAt}`, 10, y);
+      y += 10;
 
-      // Check if page overflow, create a new page if needed
-      if (y > 280) {
+      if (y > 270) {
         doc.addPage();
-        y = 10; // Reset Y position for the new page
+        y = 10;
       }
     });
 
-    // Save the PDF
-    doc.save("approved_orders_report.pdf");
+    doc.save("selected_orders.pdf");
   };
 
   // Function to generate and download an Excel file of approved orders
   const generateExcel = () => {
-    const approvedOrders = orders.filter(
-      (order) => order.status.toLowerCase() === "approved by customer"
-    );
-  
-    // Check if there are any approved orders
-    if (approvedOrders.length === 0) {
-      alert("No approved orders to download.");
+    const selected = getSelectedOrders();
+
+    if (selected.length === 0) {
+      alert("No orders selected.");
       return;
     }
-  
-    const data = approvedOrders.map((order) => ({
+
+    const data = selected.map((order) => ({
       "Order ID": order.id,
       "Customer ID": order.customer_id,
-      "Customer Name": customers[order.customer_id] || "Unknown Customer",
+      "Customer Name": customers[order.customer_id] || "Unknown",
       Status: order.status,
       "Total Amount": `$${order.total_amount}`,
       Description: order.order_description || "N/A",
-      "Created At": order.createdAt
-        ? new Date(order.createdAt).toLocaleString()
+      "Created At": order.created_at
+        ? new Date(order.created_at).toLocaleString()
         : "N/A",
     }));
-  
-    // Create a new workbook and add data
+
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Approved Orders");
-  
-    // Style headers
-    const headerRange = XLSX.utils.decode_range(ws["!ref"]);
-    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
-      const headerCell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
-      if (headerCell) {
-        headerCell.s = {
-          font: { bold: true },
-          alignment: { horizontal: "center", vertical: "center" },
-          border: {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } },
-          },
-        };
-      }
-    }
-  
-    // Style cells with borders
-    for (let R = headerRange.s.r; R <= headerRange.e.r; ++R) {
-      for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
-        const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
-        if (cell) {
-          cell.s = cell.s || {};
-          cell.s.border = {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } },
-          };
-          if (R !== 0) {
-            cell.s.alignment = { horizontal: "center", vertical: "center" };
-          }
-        }
-      }
-    }
-  
-    // Download the Excel file
-    XLSX.writeFile(wb, "approved_orders_report.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Selected Orders");
+    XLSX.writeFile(wb, "selected_orders.xlsx");
   };
-  
+
+  const handleDownloadPdf = (order) => {
+    const doc = new jsPDF();
+    const customerName = customers[order.customer_id] || "Unknown Customer";
+    const createdAt = order.created_at
+      ? new Date(order.created_at).toLocaleString()
+      : "N/A";
+
+    doc.setFontSize(16);
+    doc.text("Order Summary", 10, 10);
+    doc.setFontSize(12);
+    let y = 20;
+
+    doc.text(`Order ID: ${order.id}`, 10, y);
+    y += 6;
+    doc.text(`Customer ID: ${order.customer_id}`, 10, y);
+    y += 6;
+    doc.text(`Customer Name: ${customerName}`, 10, y);
+    y += 6;
+    doc.text(`Status: ${order.status}`, 10, y);
+    y += 6;
+    doc.text(`Total Amount: $${order.total_amount}`, 10, y);
+    y += 6;
+    doc.text(`Description: ${order.order_description || "N/A"}`, 10, y);
+    y += 6;
+    doc.text(`Created At: ${createdAt}`, 10, y);
+
+    doc.save(`order_${order.id}.pdf`);
+  };
+
+  const handleDownloadExcel = (order) => {
+    const customerName = customers[order.customer_id] || "Unknown Customer";
+    const createdAt = order.created_at
+      ? new Date(order.created_at).toLocaleString()
+      : "N/A";
+
+    const data = [
+      {
+        "Order ID": order.id,
+        "Customer ID": order.customer_id,
+        "Customer Name": customerName,
+        Status: order.status,
+        "Total Amount": `$${order.total_amount}`,
+        Description: order.order_description || "N/A",
+        "Created At": createdAt,
+      },
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Order");
+
+    XLSX.writeFile(wb, `order_${order.id}.xlsx`);
+  };
 
   return (
     <div className="p-4 h-auto w-full overflow-y-auto scrollbar-hide">
@@ -354,6 +365,10 @@ const OrdersContent = () => {
           customers={customers}
           handleCopyUrl={handleCopyUrl}
           handleRemove={handleRemove}
+          handleDownloadPdf={handleDownloadPdf}
+          handleDownloadExcel={handleDownloadExcel}
+          selectedOrderIds={selectedOrderIds}
+          handleToggleOrderSelection={handleToggleOrderSelection}
         />
       )}
     </div>

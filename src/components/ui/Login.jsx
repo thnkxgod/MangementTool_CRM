@@ -31,10 +31,10 @@ const Login = ({ setAuthenticated }) => {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-white">
+    <div className="flex justify-center items-center h-screen bg-gradient-to-r from-[#a1dbf2] to-[#6f80b9]">
       <Card className="w-full max-w-md bg-[#f4f9fb] p-6 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-center">Login</CardTitle>
+          <CardTitle className="h-8 text-center">Login</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
